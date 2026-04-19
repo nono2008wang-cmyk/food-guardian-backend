@@ -6,6 +6,7 @@ from ultralytics import YOLO
 import math
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import torch  # ✅ 加入這行
 
 app = Flask(__name__)
 CORS(app)
@@ -92,6 +93,7 @@ translation_dict = {
 
 # 修改後的寫法：改在推論時才過濾類別
 model = YOLO('yolov8n.pt')
+torch.set_num_threads(1)
 # 把 model.set_classes(custom_food_list) 這一行刪掉或註解掉
 
 @app.route('/scan_image', methods=['POST'])
