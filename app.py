@@ -11,8 +11,7 @@ import torch  # ✅ 加入這行
 app = Flask(__name__)
 CORS(app)
 
-# --- 1. 擴充版食材清單 (YOLO 英文標籤) ---
-# app.py 修正版：確保前 80 個順序與官方模型同步
+# --- 1. 官方模型絕對不能改的 80 個順序 (確保對位準確) ---
 custom_food_list = [
     "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
     "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
@@ -24,28 +23,21 @@ custom_food_list = [
     "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
 ]
 
-## app.py 中的翻譯字典：將官方 80 種標籤對應為中文
+# --- 2. 專題專用翻譯字典 (我們只翻譯食物，其他的當作沒看到) ---
 translation_dict = {
-    # --- 食材與餐飲相關 (專題展示重點) ---
-    "bottle": "瓶裝飲料", "wine glass": "高腳杯", "cup": "杯子", "fork": "叉子", "knife": "刀子", 
-    "spoon": "湯匙", "bowl": "碗/容器", "banana": "香蕉", "apple": "蘋果", "sandwich": "三明治", 
-    "orange": "橘子", "broccoli": "青花菜", "carrot": "紅蘿蔔", "hot dog": "熱狗", "pizza": "披薩", 
-    "donut": "甜甜圈", "cake": "蛋糕", "refrigerator": "冰箱", "microwave": "微波爐", "oven": "烤箱", 
-    "toaster": "烤麵包機", "sink": "水槽",
-
-    # --- 其他常見物體 (確保系統穩定性) ---
-    "person": "人", "bicycle": "腳踏車", "car": "汽車", "motorcycle": "機車", "airplane": "飛機", 
-    "bus": "巴士", "train": "火車", "truck": "卡車", "boat": "船", "traffic light": "紅綠燈", 
-    "fire hydrant": "消防栓", "stop sign": "停止標誌", "parking meter": "停車收費桿", "bench": "長椅", 
-    "bird": "鳥", "cat": "貓", "dog": "狗", "horse": "馬", "sheep": "羊", "cow": "牛", 
-    "elephant": "大象", "bear": "熊", "zebra": "斑馬", "giraffe": "長頸鹿", "backpack": "背包", 
-    "umbrella": "雨傘", "handbag": "手提包", "tie": "領帶", "suitcase": "行李箱", "frisbee": "飛盤", 
-    "skis": "滑雪板", "snowboard": "滑雪單板", "sports ball": "球類", "kite": "風箏", 
-    "baseball bat": "棒球棒", "baseball glove": "棒球手套", "skateboard": "滑板", "surfboard": "衝浪板", 
-    "tennis racket": "網球拍", "chair": "椅子", "couch": "沙發", "potted plant": "盆栽", "bed": "床", 
-    "dining table": "餐桌", "toilet": "馬桶", "tv": "電視", "laptop": "筆記型電腦", "mouse": "滑鼠", 
-    "remote": "遙控器", "keyboard": "鍵盤", "cell phone": "手機", "book": "書本", "clock": "時鐘", 
-    "vase": "花瓶", "scissors": "剪刀", "teddy bear": "泰迪熊", "hair drier": "吹風機", "toothbrush": "牙刷"
+    "apple": "蘋果",
+    "orange": "橘子",  # 👈 你的橘子在這裡！
+    "banana": "香蕉",
+    "broccoli": "青花菜",
+    "carrot": "紅蘿蔔",
+    "sandwich": "三明治",
+    "pizza": "披薩",
+    "cake": "蛋糕",
+    "donut": "甜甜圈",
+    "hot dog": "熱狗",
+    "bottle": "瓶裝飲料",
+    "cup": "杯裝飲品",
+    "bowl": "碗裝食物"
 }
 
 # 修改後的寫法：改在推論時才過濾類別
@@ -83,19 +75,20 @@ def scan_image():
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         # 3. 進行 YOLO 辨識
-        # 🔥 核彈級降維打擊：門檻降到 0.15
         results = model(img, conf=0.15, iou=0.3)
         inventory_count = {}
 
-        # 4. 統計辨識結果
+        # 4. 統計辨識結果 (過濾系統)
         for r in results:
             for box in r.boxes:
                 cls_idx = int(box.cls[0])
                 if cls_idx < len(custom_food_list):
                     eng_name = custom_food_list[cls_idx]
-                    # 透過字典將複雜的英文描述對應回標準中文
-                    zh_name = translation_dict.get(eng_name, eng_name)
-                    inventory_count[zh_name] = inventory_count.get(zh_name, 0) + 1
+                    
+                    # 🔥 終極過濾器：如果這個英文名字「有」在我們的翻譯字典裡，才加進冰箱！
+                    if eng_name in translation_dict:
+                        zh_name = translation_dict[eng_name]
+                        inventory_count[zh_name] = inventory_count.get(zh_name, 0) + 1
                     
         # 5. 回傳 JSON 清單給前端
         return jsonify(inventory_count)
