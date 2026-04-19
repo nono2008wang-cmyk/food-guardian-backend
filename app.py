@@ -65,7 +65,8 @@ def scan_image():
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         # 3. 進行 YOLO 辨識
-        results = model(img, conf=0.15, iou=0.3)
+        # 加入 imgsz=320 強制 AI 將運算解析度降到最低，避免 512MB 記憶體爆炸
+        results = model(img, conf=0.15, iou=0.3, imgsz=320)
         inventory_count = {}
 
         # 4. 統計辨識結果 (過濾系統)
