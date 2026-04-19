@@ -1,3 +1,4 @@
+import traceback
 import cv2
 import numpy as np
 import base64
@@ -125,7 +126,15 @@ def scan_image():
         return jsonify(inventory_count)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # 這裡會把詳細的錯誤原因（哪一行出錯、什麼錯誤）印在 Render 的 Log 裡
+        print("🚨 發生嚴重錯誤:", str(e))
+        print(traceback.format_exc()) 
+        
+        # 回傳給手機前端的錯誤訊息，也多加一個 details 欄位方便查看
+        return jsonify({
+            "error": "伺服器內部錯誤", 
+            "details": str(e)
+        }), 500
 
 if __name__ == '__main__':
     # 啟動伺服器
