@@ -97,6 +97,22 @@ model = YOLO('yolov8n.pt')
 @app.route('/scan_image', methods=['POST'])
 def scan_image():
     try:
+        # 1. 先確認有沒有收到 JSON 資料
+        json_data = request.get_json()
+        if not json_data:
+            print("🚨 錯誤：收到的請求不是 JSON 格式")
+            return jsonify({"error": "Missing JSON body"}), 400
+            
+        # 2. 確認有沒有 image 這個欄位
+        data = json_data.get('image')
+        if not data:
+            print("🚨 錯誤：JSON 中缺少 image 欄位")
+            return jsonify({"error": "Missing image field"}), 400
+
+        # 3. 確保資料包含 Base64 的標頭
+        if ',' not in data:
+            print("🚨 錯誤：圖片格式不正確，缺少逗號")
+            return jsonify({"error": "Invalid image format"}), 400
         # 1. 接收前端傳來的 base64 圖片資料
         data = request.json.get('image')
         if not data:
