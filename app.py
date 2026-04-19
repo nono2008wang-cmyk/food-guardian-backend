@@ -48,28 +48,18 @@ torch.set_num_threads(1)
 @app.route('/scan_image', methods=['POST'])
 def scan_image():
     try:
-        # 1. 先確認有沒有收到 JSON 資料
+        # 1. 確保有收到正確的 JSON 與圖片資料
         json_data = request.get_json()
-        if not json_data:
-            print("🚨 錯誤：收到的請求不是 JSON 格式")
-            return jsonify({"error": "Missing JSON body"}), 400
-            
-        # 2. 確認有沒有 image 這個欄位
-        data = json_data.get('image')
-        if not data:
-            print("🚨 錯誤：JSON 中缺少 image 欄位")
-            return jsonify({"error": "Missing image field"}), 400
+        if not json_data or 'image' not in json_data:
+            print("🚨 錯誤：缺少 image 欄位或非 JSON 格式")
+            return jsonify({"error": "Missing image data"}), 400
 
-        # 3. 確保資料包含 Base64 的標頭
+        data = json_data['image']
         if ',' not in data:
-            print("🚨 錯誤：圖片格式不正確，缺少逗號")
-            return jsonify({"error": "Invalid image format"}), 400
-        # 1. 接收前端傳來的 base64 圖片資料
-        data = request.json.get('image')
-        if not data:
-            return jsonify({"error": "No image data"}), 400
+            print("🚨 錯誤：圖片 Base64 格式不正確")
+            return jsonify({"error": "Invalid format"}), 400
 
-        # 2. 解析 base64 並轉換為 OpenCV 可讀取的格式
+        # 2. 解析 base64 並轉換為 OpenCV 圖片
         encoded_data = data.split(',')[1]
         nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -85,24 +75,17 @@ def scan_image():
                 if cls_idx < len(custom_food_list):
                     eng_name = custom_food_list[cls_idx]
                     
-                    # 🔥 終極過濾器：如果這個英文名字「有」在我們的翻譯字典裡，才加進冰箱！
+                    # 只有在翻譯字典裡的「食物」才會被加入清單
                     if eng_name in translation_dict:
                         zh_name = translation_dict[eng_name]
                         inventory_count[zh_name] = inventory_count.get(zh_name, 0) + 1
                     
-        # 5. 回傳 JSON 清單給前端
         return jsonify(inventory_count)
 
     except Exception as e:
-        # 這裡會把詳細的錯誤原因（哪一行出錯、什麼錯誤）印在 Render 的 Log 裡
         print("🚨 發生嚴重錯誤:", str(e))
         print(traceback.format_exc()) 
-        
-        # 回傳給手機前端的錯誤訊息，也多加一個 details 欄位方便查看
-        return jsonify({
-            "error": "伺服器內部錯誤", 
-            "details": str(e)
-        }), 500
+        return jsonify({"error": "伺服器內部錯誤", "details": str(e)}), 500
 
 if __name__ == '__main__':
     # 啟動伺服器
